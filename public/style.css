@@ -1,0 +1,84 @@
+/* Custom Scrollbar for console and scroll areas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Input transition focus glow */
+.glow-focus:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+/* Animation keyframes */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+.pulse-ring {
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Flatpickr Overrides to match our slate/teal theme */
+.flatpickr-calendar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-family: inherit !important;
+}
+.flatpickr-day.selected, 
+.flatpickr-day.startRange, 
+.flatpickr-day.endRange, 
+.flatpickr-day.selected.inRange, 
+.flatpickr-day.startRange.inRange, 
+.flatpickr-day.endRange.inRange, 
+.flatpickr-day.selected:focus, 
+.flatpickr-day.startRange:focus, 
+.flatpickr-day.endRange:focus, 
+.flatpickr-day.selected:hover, 
+.flatpickr-day.startRange:hover, 
+.flatpickr-day.endRange:hover {
+  background: #14b8a6 !important;
+  border-color: #14b8a6 !important;
+  color: #0f172a !important;
+  font-weight: bold !important;
+}
+.flatpickr-day.inRange {
+  background: rgba(20, 184, 166, 0.1) !important;
+  border-color: transparent !important;
+  color: #2dd4bf !important;
+}
+.flatpickr-day:hover {
+  background: #1e293b !important;
+}
+.flatpickr-months .flatpickr-month {
+  color: #cbd5e1 !important;
+  fill: #cbd5e1 !important;
+}
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+  font-weight: bold !important;
+}
+.flatpickr-weekday {
+  color: #64748b !important;
+  font-weight: bold !important;
+}
