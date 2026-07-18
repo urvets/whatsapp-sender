@@ -3,7 +3,8 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
-  WASocket
+  WASocket,
+  Browsers
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import qrcode from 'qrcode';
@@ -105,7 +106,11 @@ export class BaileysWhatsAppRepository implements IWhatsAppRepository, OnModuleI
       const sock = makeWASocket({
         version,
         auth: state,
-        logger: this.logger
+        logger: this.logger,
+        browser: Browsers.macOS('Chrome'),
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+        fireInitQueries: false
       });
       session.sock = sock;
 
