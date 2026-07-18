@@ -268,7 +268,6 @@ apiKeyInput.addEventListener('input', (e) => {
 
 // Check status of gateway connection
 // Link modes map: deviceId -> 'qr' | 'pair'
-const linkModeMap = {};
 
 // Toggle device link mode between QR and pairing code
 // Open a modal to connect (QR or Pairing) a specific device
@@ -294,7 +293,6 @@ function renderConnectModal(device) {
   const existing = document.getElementById('connect-device-modal');
   if (existing) existing.remove();
 
-  const mode = linkModeMap[device.id] || 'qr';
   const displayName = device.name || device.id.replace('session_', '#');
 
   const overlay = document.createElement('div');
@@ -315,18 +313,6 @@ function renderConnectModal(device) {
         </button>
       </div>
 
-      <!-- Mode toggle -->
-      <div class="flex bg-slate-950 p-0.5 rounded-xl border border-slate-900 text-[11px] font-bold">
-        <button id="cm-tab-qr" type="button"
-          class="flex-1 py-2 text-center rounded-lg transition-all ${mode !== 'pair' ? 'bg-slate-800 text-teal-400 border border-slate-700' : 'text-slate-500 hover:text-slate-300'}">
-          QR Code
-        </button>
-        <button id="cm-tab-pair" type="button"
-          class="flex-1 py-2 text-center rounded-lg transition-all ${mode === 'pair' ? 'bg-slate-800 text-teal-400 border border-slate-700' : 'text-slate-500 hover:text-slate-300'}">
-          Pairing Code
-        </button>
-      </div>
-
       <!-- Content -->
       <div id="cm-content"></div>
     </div>
@@ -337,115 +323,66 @@ function renderConnectModal(device) {
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   overlay.querySelector('#connect-modal-close').addEventListener('click', close);
 
-  const renderContent = (m) => {
+  const renderContent = () => {
     const content = overlay.querySelector('#cm-content');
-    if (m !== 'pair') {
-      content.innerHTML = `
-        <div class="flex items-start space-x-5">
-          ${device.qr ? `
-            <div class="bg-white p-2 rounded-xl border border-slate-700 flex-shrink-0">
-              <img class="w-40 h-40" src="${device.qr}" alt="QR Code">
-            </div>
-          ` : `
-            <div class="flex items-center justify-center w-40 h-40 rounded-xl border border-slate-800 bg-slate-950 flex-shrink-0">
-              <div class="animate-spin rounded-full h-6 w-6 border-2 border-slate-800 border-t-teal-500"></div>
-            </div>
-          `}
-          <div class="space-y-2 pt-1">
-            <p class="text-xs font-semibold text-slate-300">Scan with WhatsApp</p>
-            <ol class="text-[10px] text-slate-500 space-y-1 leading-relaxed list-decimal list-inside">
-              <li>Open WhatsApp on your phone</li>
-              <li>Go to Settings → Linked Devices</li>
-              <li>Tap <strong class="text-slate-400">Link a Device</strong></li>
-              <li>Point your camera at this QR code</li>
-            </ol>
-            ${device.status === 'connecting' ? '<p class="text-[10px] text-amber-400 animate-pulse font-mono">Connecting…</p>' : ''}
-          </div>
+    content.innerHTML = `
+      <div class="space-y-3">
+        <p class="text-[11px] text-slate-500">Enter the phone number registered on WhatsApp to receive a pairing code:</p>
+        <div class="flex gap-2">
+          <input type="text" id="cm-phone-input"
+            class="flex-1 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-600 px-3 py-2.5 text-xs font-mono focus:outline-none focus:border-teal-500/60"
+            placeholder="e.g. 5511999999999">
+          <button id="cm-get-code" type="button"
+            class="px-4 py-2.5 bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 border border-teal-500/30 rounded-xl text-xs font-bold transition-all whitespace-nowrap">
+            Get Code
+          </button>
         </div>
-      `;
-    } else {
-      content.innerHTML = `
-        <div class="space-y-3">
-          <p class="text-[11px] text-slate-500">Enter the phone number registered on WhatsApp to receive a pairing code:</p>
-          <div class="flex gap-2">
-            <input type="text" id="cm-phone-input"
-              class="flex-1 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-600 px-3 py-2.5 text-xs font-mono focus:outline-none focus:border-teal-500/60"
-              placeholder="e.g. 5511999999999">
-            <button id="cm-get-code" type="button"
-              class="px-4 py-2.5 bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 border border-teal-500/30 rounded-xl text-xs font-bold transition-all whitespace-nowrap">
-              Get Code
-            </button>
-          </div>
-          <div id="cm-pair-display" class="hidden bg-slate-950 border border-slate-800 rounded-xl py-4 text-center font-mono">
-            <span class="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Your Pairing Code</span>
-            <span id="cm-pair-code" class="text-2xl font-bold text-teal-400 tracking-[0.25em]"></span>
-          </div>
+        <div id="cm-pair-display" class="hidden bg-slate-950 border border-slate-800 rounded-xl py-4 text-center font-mono">
+          <span class="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Your Pairing Code</span>
+          <span id="cm-pair-code" class="text-2xl font-bold text-teal-400 tracking-[0.25em]"></span>
         </div>
-      `;
+      </div>
+    `;
 
-      overlay.querySelector('#cm-get-code').addEventListener('click', async () => {
-        const phone = overlay.querySelector('#cm-phone-input').value.trim();
-        if (!phone) { alert('Please enter a phone number.'); return; }
+    overlay.querySelector('#cm-get-code').addEventListener('click', async () => {
+      const phone = overlay.querySelector('#cm-phone-input').value.trim();
+      if (!phone) { alert('Please enter a phone number.'); return; }
 
-        const btn = overlay.querySelector('#cm-get-code');
-        btn.textContent = 'Requesting…';
-        btn.disabled = true;
+      const btn = overlay.querySelector('#cm-get-code');
+      btn.textContent = 'Requesting…';
+      btn.disabled = true;
 
-        try {
-          const headers = { 'Content-Type': 'application/json' };
-          const key = getApiKey();
-          if (key) headers['x-api-key'] = key;
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        const key = getApiKey();
+        if (key) headers['x-api-key'] = key;
 
-          const res = await fetch(`${API_BASE}/api/devices/${device.id}/pairing-code`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ phone })
-          });
-          const raw = await res.json();
-          const data = raw.data !== undefined ? raw.data : raw;
+        const res = await fetch(`${API_BASE}/api/devices/${device.id}/pairing-code`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ phone })
+        });
+        const raw = await res.json();
+        const data = raw.data !== undefined ? raw.data : raw;
 
-          if (res.ok && data.code) {
-            overlay.querySelector('#cm-pair-display').classList.remove('hidden');
-            overlay.querySelector('#cm-pair-code').textContent = data.code;
-          } else {
-            const errMsg = data.error?.message || data.error || 'Unknown error';
-            alert('Failed to get pairing code: ' + errMsg);
-          }
-        } catch (err) {
-          alert('Network error requesting pairing code.');
-        } finally {
-          btn.textContent = 'Get Code';
-          btn.disabled = false;
+        if (res.ok && data.code) {
+          overlay.querySelector('#cm-pair-display').classList.remove('hidden');
+          overlay.querySelector('#cm-pair-code').textContent = data.code;
+        } else {
+          const errMsg = data.error?.message || data.error || 'Unknown error';
+          alert('Failed to get pairing code: ' + errMsg);
         }
-      });
-    }
+      } catch (err) {
+        alert('Network error requesting pairing code.');
+      } finally {
+        btn.textContent = 'Get Code';
+        btn.disabled = false;
+      }
+    });
   };
 
-  // Tab switching inside the modal
-  overlay.querySelector('#cm-tab-qr').addEventListener('click', () => {
-    linkModeMap[device.id] = 'qr';
-    overlay.querySelector('#cm-tab-qr').className = 'flex-1 py-2 text-center rounded-lg transition-all bg-slate-800 text-teal-400 border border-slate-700';
-    overlay.querySelector('#cm-tab-pair').className = 'flex-1 py-2 text-center rounded-lg transition-all text-slate-500 hover:text-slate-300';
-    renderContent('qr');
-  });
-  overlay.querySelector('#cm-tab-pair').addEventListener('click', () => {
-    linkModeMap[device.id] = 'pair';
-    overlay.querySelector('#cm-tab-pair').className = 'flex-1 py-2 text-center rounded-lg transition-all bg-slate-800 text-teal-400 border border-slate-700';
-    overlay.querySelector('#cm-tab-qr').className = 'flex-1 py-2 text-center rounded-lg transition-all text-slate-500 hover:text-slate-300';
-    renderContent('pair');
-  });
-
-  renderContent(mode);
+  renderContent();
 }
-
-window.toggleDeviceLinkMode = function(id, mode) {
-  linkModeMap[id] = mode;
-  // Re-render but restore the panel open state
-  fetchDevices().then(() => {
-    const panel = document.getElementById(`connect-panel-${id}`);
-    if (panel) panel.classList.remove('hidden');
-  });
-};
 
 // Request pairing code for a specific device
 window.requestDevicePairingCode = async function(id) {
@@ -614,7 +551,6 @@ function renderDevices(devices) {
               break;
           }
 
-          const mode = linkModeMap[device.id] || 'qr';
           // Show user-given name if set; else shorten the session ID
           const shortId = device.id.replace('session_', '#');
           const displayName = device.name ? device.name : shortId;

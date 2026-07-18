@@ -7,7 +7,6 @@ import makeWASocket, {
   Browsers
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
-import qrcode from 'qrcode';
 import pino from 'pino';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -58,7 +57,6 @@ export class BaileysWhatsAppRepository implements IWhatsAppRepository, OnModuleI
       id: s.id,
       name: s.name,
       status: s.status,
-      qr: s.qrCodeDataUrl,
       number: s.connectedNumber
     }));
   }
@@ -93,7 +91,6 @@ export class BaileysWhatsAppRepository implements IWhatsAppRepository, OnModuleI
       name: resolvedName,
       sock: null,
       status: 'connecting',
-      qrCodeDataUrl: null,
       connectedNumber: null,
       isReconnecting: false
     };
@@ -121,20 +118,10 @@ export class BaileysWhatsAppRepository implements IWhatsAppRepository, OnModuleI
 
       sock.ev.on('connection.update', async (update) => {
         if (session.sock !== sock) return;
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-          session.status = 'qr';
-          try {
-            session.qrCodeDataUrl = await qrcode.toDataURL(qr);
-          } catch (err) {
-            console.error(`QR generation error for session ${id}:`, err);
-          }
-        }
+        const { connection, lastDisconnect } = update;
 
         if (connection === 'close') {
           session.status = 'connecting';
-          session.qrCodeDataUrl = null;
           session.connectedNumber = null;
 
           const lastError = lastDisconnect?.error;
@@ -151,7 +138,6 @@ export class BaileysWhatsAppRepository implements IWhatsAppRepository, OnModuleI
           }
         } else if (connection === 'open') {
           session.status = 'connected';
-          session.qrCodeDataUrl = null;
           session.connectedNumber = sock.user?.id
             ? sock.user.id.split(':')[0]
             : 'Unknown';
