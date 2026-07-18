@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
   test-and-build-image:
@@ -12,7 +13,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    environment: Production
+    environment: ${{ github.ref_name == 'develop' && 'Development' || 'Production' }}
     env:
       REGISTRY: ghcr.io
       WA_IMAGE_NAME: ${{ github.repository_owner }}/whatsapp-sender
@@ -58,7 +59,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.WA_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.WA_IMAGE_NAME }}:${{ github.ref_name == 'develop' && 'latest-dev' || 'latest' }}
             ${{ env.REGISTRY }}/${{ env.WA_IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -75,9 +76,92 @@ jobs:
             <b>Branch:</b> ${{ github.ref_name }}
             <b>Run URL:</b> https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
+  deploy-develop:
+    name: Deploy to Single Instance (Development)
+    needs: test-and-build-image
+    if: github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    environment: Development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Cloudflared CLI
+        run: |
+          curl -L --output /usr/local/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /usr/local/bin/cloudflared
+
+      - name: Setup SSH Config and Key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+          echo "" >> ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # Add configuration for proxying SSH through cloudflared
+          cat <<EOF >> ~/.ssh/config
+          Host ssh-server
+            HostName ${{ secrets.SSH_HOST }}
+            User ${{ secrets.SSH_USER || 'admin' }}
+            IdentityFile ~/.ssh/id_rsa
+            ProxyCommand /usr/local/bin/cloudflared access ssh --hostname %h
+            StrictHostKeyChecking no
+          EOF
+
+      - name: Execute Remote Deploy Commands
+        run: |
+          # Start ssh-agent and add passphrase-protected key
+          eval $(ssh-agent -s)
+          echo 'echo "${{ secrets.SSH_PASSPHRASE }}"' > ~/.ssh/askpass.sh
+          chmod +x ~/.ssh/askpass.sh
+          export DISPLAY=:0
+          export SSH_ASKPASS=~/.ssh/askpass.sh
+          setsid ssh-add ~/.ssh/id_rsa < /dev/null
+          
+          ssh ssh-server "${{ secrets.DEPLOY_PATH || '/opt/urvets' }}/update-whatsapp-gateway.sh"
+
+      - name: Purge Cloudflare Cache
+        if: success()
+        env:
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+
+      - name: Send Telegram success notification
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN || '8954996588:AAHim2OwZ55W2DjNRuJnTvyLd2PgwO6KKoU' }}/sendMessage" \
+            -d "chat_id=-1003956980090" \
+            -d "message_thread_id=2" \
+            -d "parse_mode=HTML" \
+            --data-urlencode "text=✅ <b>Deployment Successful (Single Instance Dev)</b>
+            <b>Repo:</b> ${{ github.repository }}
+            <b>Branch:</b> ${{ github.ref_name }}
+            <b>Run URL:</b> https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Send Telegram failure notification
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN || '8954996588:AAHim2OwZ55W2DjNRuJnTvyLd2PgwO6KKoU' }}/sendMessage" \
+            -d "chat_id=-1003956980090" \
+            -d "message_thread_id=2" \
+            -d "parse_mode=HTML" \
+            --data-urlencode "text=❌ <b>Deployment Failed (Dev)</b>
+            <b>Repo:</b> ${{ github.repository }}
+            <b>Branch:</b> ${{ github.ref_name }}
+            <b>Run URL:</b> https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
   deploy-production:
     name: Deploy to Single Instance (Production)
     needs: test-and-build-image
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     environment: Production
 
