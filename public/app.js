@@ -675,7 +675,8 @@ async function checkStatus() {
       return;
     }
 
-    const devices = await res.json();
+    const rawDevices = await res.json();
+    const devices = (rawDevices && Array.isArray(rawDevices.data)) ? rawDevices.data : (Array.isArray(rawDevices) ? rawDevices : []);
     
     // Connection health pulse color based on overall connection status
     const connectedCount = devices.filter(d => d.status === 'connected').length;
