@@ -65,7 +65,7 @@ jobs:
     environment: ${{ github.ref_name == 'develop' && 'Development' || 'Production' }}
     env:
       REGISTRY: ghcr.io
-      API_IMAGE_NAME: ${{ github.repository_owner }}/urvets-api
+      API_IMAGE_NAME: ${{ github.repository_owner }}/whatsapp-sender
       TELEGRAM_BOT_TOKEN: ${{ needs.fetch-secrets.outputs.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ needs.fetch-secrets.outputs.TELEGRAM_CHAT_ID }}
 
@@ -182,7 +182,7 @@ jobs:
           export SSH_ASKPASS=~/.ssh/askpass.sh
           setsid ssh-add ~/.ssh/id_rsa < /dev/null
           
-          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/urvets' }}/update-api.sh"
+          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/whatsapp-sender' }}/update-api.sh"
 
       - name: Purge Cloudflare Cache
         if: success()
@@ -274,7 +274,7 @@ jobs:
           export SSH_ASKPASS=~/.ssh/askpass.sh
           setsid ssh-add ~/.ssh/id_rsa < /dev/null
           
-          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/urvets' }}/update-api.sh"
+          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/whatsapp-sender' }}/update-api.sh"
 
       - name: Purge Cloudflare Cache
         if: success()
