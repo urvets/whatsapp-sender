@@ -182,7 +182,7 @@ jobs:
           export SSH_ASKPASS=~/.ssh/askpass.sh
           setsid ssh-add ~/.ssh/id_rsa < /dev/null
           
-          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/whatsapp-sender' }}/update-api.sh"
+          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/urvets' }}/update-api.sh"
 
       - name: Purge Cloudflare Cache
         if: success()
@@ -274,7 +274,7 @@ jobs:
           export SSH_ASKPASS=~/.ssh/askpass.sh
           setsid ssh-add ~/.ssh/id_rsa < /dev/null
           
-          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/whatsapp-sender' }}/update-api.sh"
+          ssh ssh-server "${{ env.DEPLOY_PATH || '/opt/urvets' }}/update-api.sh"
 
       - name: Purge Cloudflare Cache
         if: success()
