@@ -242,6 +242,11 @@ function logEvent(message, type = 'info') {
   consoleLogs.scrollTop = consoleLogs.scrollHeight;
 }
 
+// Sync localStorage with server API Key on page load if provided by the backend
+if (window.API_KEY) {
+  localStorage.setItem('whatsapp_api_key', window.API_KEY);
+}
+
 // Retrieve active API Key from config input
 function getApiKey() {
   const localKey = localStorage.getItem('whatsapp_api_key');
