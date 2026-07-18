@@ -275,7 +275,8 @@ window.showConnectModal = function(id) {
 
   fetch(`${API_BASE}/api/devices`, { headers })
     .then(r => r.json())
-    .then(devices => {
+    .then(result => {
+      const devices = result.data || [];
       const device = devices.find(d => d.id === id);
       if (!device) return;
       renderConnectModal(device);
