@@ -88,15 +88,17 @@ detailResendBtn.addEventListener('click', async () => {
       headers,
       body: JSON.stringify(body)
     });
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw.data !== undefined ? raw.data : raw;
 
-    if (res.ok && data.success) {
+    if (res.ok && (raw.success || data.success)) {
       logEvent(`Message successfully re-queued for +${item.phone}!`, 'success');
       closeDetailSidebar();
       if (activeTab === 'outbox') fetchOutboxLogs();
       if (activeTab === 'queue') fetchQueue();
     } else {
-      alert(`Resend failed: ${data.error || 'Server error'}`);
+      const errMsg = data.error?.message || data.error || 'Server error';
+      alert(`Resend failed: ${errMsg}`);
     }
   } catch (err) {
     alert('Network error during resend.');
@@ -393,13 +395,15 @@ function renderConnectModal(device) {
             headers,
             body: JSON.stringify({ phone })
           });
-          const data = await res.json();
+          const raw = await res.json();
+          const data = raw.data !== undefined ? raw.data : raw;
 
           if (res.ok && data.code) {
             overlay.querySelector('#cm-pair-display').classList.remove('hidden');
             overlay.querySelector('#cm-pair-code').textContent = data.code;
           } else {
-            alert('Failed to get pairing code: ' + (data.error || 'Unknown error'));
+            const errMsg = data.error?.message || data.error || 'Unknown error';
+            alert('Failed to get pairing code: ' + errMsg);
           }
         } catch (err) {
           alert('Network error requesting pairing code.');
@@ -459,14 +463,16 @@ window.requestDevicePairingCode = async function(id) {
       headers,
       body: JSON.stringify({ phone })
     });
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw.data !== undefined ? raw.data : raw;
 
-    if (res.ok && data.success && data.code) {
+    if (res.ok && (raw.success || data.success) && data.code) {
       pairCodeText.textContent = data.code;
       pairDisplay.classList.remove('hidden');
       logEvent(`Pairing code for device ${id} generated successfully: ${data.code}`, 'success');
     } else {
-      alert('Failed to request pairing code: ' + (data.error || 'Unknown error'));
+      const errMsg = data.error?.message || data.error || 'Unknown error';
+      alert('Failed to request pairing code: ' + errMsg);
     }
   } catch (err) {
     alert('Network error requesting pairing code.');
@@ -487,13 +493,15 @@ window.deleteDevice = async function(id) {
       method: 'DELETE',
       headers
     });
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw.data !== undefined ? raw.data : raw;
 
-    if (res.ok && data.success) {
+    if (res.ok && (raw.success || data.success)) {
       logEvent(`WhatsApp device ${id} deleted successfully.`, 'success');
       fetchDevices();
     } else {
-      alert('Failed to delete device: ' + (data.error || 'Unknown error'));
+      const errMsg = data.error?.message || data.error || 'Unknown error';
+      alert('Failed to delete device: ' + errMsg);
     }
   } catch (err) {
     alert('Network error deleting device.');
@@ -509,7 +517,8 @@ async function fetchDevices() {
 
     const res = await fetch(`${API_BASE}/api/devices`, { headers });
     if (res.ok) {
-      const devices = await res.json();
+      const result = await res.json();
+      const devices = result.data || [];
       renderDevices(devices);
     }
   } catch (e) {
@@ -533,7 +542,8 @@ async function fetchDevicesPage() {
 
     const res = await fetch(`${API_BASE}/api/devices`, { headers });
     if (res.ok) {
-      const devices = await res.json();
+      const result = await res.json();
+      const devices = result.data || [];
       renderDevices(devices);
     }
   } catch (e) {
@@ -761,8 +771,9 @@ regenerateKeyBtn.addEventListener('click', async () => {
       logEvent('Key rotated successfully. Backend .env rewritten with new secret.', 'success');
       alert('API Key successfully regenerated and saved to .env!\n\nNew Key: ' + data.apiKey);
     } else {
-      logEvent('Failed to regenerate key: ' + (data.error || 'Unauthorized'), 'error');
-      alert('Failed to regenerate API Key: ' + (data.error || 'Unauthorized'));
+      const errMsg = data.error?.message || data.error || 'Unauthorized';
+      logEvent('Failed to regenerate key: ' + errMsg, 'error');
+      alert('Failed to regenerate API Key: ' + errMsg);
     }
   } catch (e) {
     logEvent('Failed to send key rotation request.', 'error');
@@ -779,7 +790,8 @@ regenerateKeyBtn.addEventListener('click', async () => {
 
       const res = await fetch(`${API_BASE}/api/config`, { headers });
       if (res.ok) {
-        const data = await res.json();
+        const raw = await res.json();
+        const data = raw.data !== undefined ? raw.data : raw;
         if (data.queueDelaySeconds && rateLimitInput) {
           rateLimitInput.value = data.queueDelaySeconds;
         }
@@ -808,14 +820,16 @@ regenerateKeyBtn.addEventListener('click', async () => {
         headers,
         body: JSON.stringify({ delaySeconds: val })
       });
-      const data = await res.json();
+      const raw = await res.json();
+      const data = raw.data !== undefined ? raw.data : raw;
 
-      if (res.ok && data.success) {
+      if (res.ok && (raw.success || data.success)) {
         logEvent(`Rate limit updated successfully to ${val}s.`, 'success');
         alert(`Rate limit successfully updated to ${val} seconds!`);
       } else {
-        logEvent('Failed to save rate limit: ' + (data.error || 'Server error'), 'error');
-        alert('Failed to save rate limit: ' + (data.error || 'Server error'));
+        const errMsg = data.error?.message || data.error || 'Server error';
+        logEvent('Failed to save rate limit: ' + errMsg, 'error');
+        alert('Failed to save rate limit: ' + errMsg);
       }
     } catch (err) {
       logEvent('Failed to send rate limit save request.', 'error');
@@ -835,13 +849,15 @@ addDeviceBtn.addEventListener('click', async () => {
       method: 'POST',
       headers
     });
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw.data !== undefined ? raw.data : raw;
 
-    if (res.ok && data.success) {
+    if (res.ok && (raw.success || data.success)) {
       logEvent(`New device session ${data.id} initialized.`, 'success');
       fetchDevices();
     } else {
-      alert('Failed to register device: ' + (data.error || 'Unknown error'));
+      const errMsg = data.error?.message || data.error || 'Unknown error';
+      alert('Failed to register device: ' + errMsg);
     }
   } catch (err) {
     alert('Network error registering device.');
@@ -879,12 +895,13 @@ sendForm.addEventListener('submit', async (e) => {
       headers,
       body: JSON.stringify(body)
     });
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw.data !== undefined ? raw.data : raw;
 
     responseBlock.classList.remove('hidden');
-    responseJson.textContent = JSON.stringify(data, null, 2);
+    responseJson.textContent = JSON.stringify(raw, null, 2);
 
-    if (res.ok && data.success) {
+    if (res.ok && (raw.success || data.success)) {
       responseBadge.className = 'absolute top-3 right-3 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-emerald-955 text-emerald-400 border border-emerald-900/30';
       responseBadge.textContent = '200 SUCCESS';
       logEvent(`Message queued successfully for +${phone}! Check Queue Manager.`, 'success');
@@ -893,7 +910,8 @@ sendForm.addEventListener('submit', async (e) => {
     } else {
       responseBadge.className = 'absolute top-3 right-3 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-900/30';
       responseBadge.textContent = `${res.status} ERROR`;
-      logEvent(`Message delivery failed. Reason: ${data.error || 'Server error'}`, 'error');
+      const errMsg = data.error?.message || data.error || 'Server error';
+      logEvent(`Message delivery failed. Reason: ${errMsg}`, 'error');
     }
   } catch (err) {
     responseBlock.classList.remove('hidden');
@@ -957,8 +975,8 @@ async function fetchOutboxLogs() {
     }
     
     const result = await res.json();
-    const logs = result.logs || [];
-    const total = result.total || 0;
+    const logs = result.data || [];
+    const total = result.metadata?.totalData || 0;
     outboxRows.innerHTML = '';
 
     if (!logs || logs.length === 0) {
@@ -1062,8 +1080,8 @@ async function fetchQueue() {
     }
     
     const result = await res.json();
-    const queue = result.queue || [];
-    const total = result.total || 0;
+    const queue = result.data || [];
+    const total = result.metadata?.totalData || 0;
     queueRows.innerHTML = '';
 
     if (!queue || queue.length === 0) {
@@ -1142,13 +1160,15 @@ clearQueueBtn.addEventListener('click', async () => {
 
     logEvent('Purging sending queue from backend...', 'event');
     const res = await fetch(`${API_BASE}/api/queue`, { method: 'DELETE', headers });
-    const data = await res.json();
+    const raw = await res.json();
+    const data = raw.data !== undefined ? raw.data : raw;
     
-    if (data.success) {
+    if (res.ok && (raw.success || data.success)) {
       logEvent('Queue purged successfully.', 'success');
       fetchQueue();
     } else {
-      logEvent('Failed to clear queue: ' + data.error, 'error');
+      const errMsg = data.error?.message || data.error || 'Unknown error';
+      logEvent('Failed to clear queue: ' + errMsg, 'error');
     }
   } catch (err) {
     logEvent('Failed to send clear queue request.', 'error');
