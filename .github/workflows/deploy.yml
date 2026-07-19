@@ -21,6 +21,9 @@ jobs:
       SSH_PRIVATE_KEY: ${{ steps.export-secrets.outputs.SSH_PRIVATE_KEY }}
       SSH_PASSPHRASE: ${{ steps.export-secrets.outputs.SSH_PASSPHRASE }}
       TELEGRAM_CHAT_ID: ${{ steps.export-secrets.outputs.TELEGRAM_CHAT_ID }}
+      NEXUS_REGISTRY: ${{ steps.export-secrets.outputs.NEXUS_REGISTRY }}
+      NEXUS_USERNAME: ${{ steps.export-secrets.outputs.NEXUS_USERNAME }}
+      NEXUS_PASSWORD: ${{ steps.export-secrets.outputs.NEXUS_PASSWORD }}
     steps:
       - name: Install Infisical CLI
         run: |
@@ -36,6 +39,7 @@ jobs:
           
           # Export secrets in JSON format to extract keys easily
           infisical export --format=json --env=$ENV_NAME --projectId=${{ secrets.INFISICAL_PROJECT_ID }} --path="/GITHUB" > secrets.json
+          infisical export --format=json --env=$ENV_NAME --projectId=${{ secrets.INFISICAL_PROJECT_ID }} --path="/NEXUS" > nexus.json
           
           # Read individual values and set as GITHUB_OUTPUT
           echo "CLOUDFLARE_ZONE_ID=$(node -p "require('./secrets.json').find(x => x.key === 'CLOUDFLARE_ZONE_ID')?.value || ''")" >> "$GITHUB_OUTPUT"
@@ -52,6 +56,11 @@ jobs:
           
           echo "SSH_PASSPHRASE=$(node -p "require('./secrets.json').find(x => x.key === 'SSH_PASSPHRASE')?.value || ''")" >> "$GITHUB_OUTPUT"
           echo "TELEGRAM_CHAT_ID=$(node -p "require('./secrets.json').find(x => x.key === 'TELEGRAM_CHAT_ID')?.value || ''")" >> "$GITHUB_OUTPUT"
+
+          # Nexus config
+          echo "NEXUS_REGISTRY=$(node -p "require('./nexus.json').find(x => x.key === 'NEXUS_REGISTRY')?.value.replace(/^https?:\/\//, '') || ''")" >> "$GITHUB_OUTPUT"
+          echo "NEXUS_USERNAME=$(node -p "require('./nexus.json').find(x => x.key === 'NEXUS_USERNAME')?.value || ''")" >> "$GITHUB_OUTPUT"
+          echo "NEXUS_PASSWORD=$(node -p "require('./nexus.json').find(x => x.key === 'NEXUS_PASSWORD')?.value || ''")" >> "$GITHUB_OUTPUT"
         env:
           INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL || 'https://app.infisical.com' }}
 
@@ -64,8 +73,8 @@ jobs:
       packages: write
     environment: ${{ github.ref_name == 'develop' && 'Development' || 'Production' }}
     env:
-      REGISTRY: ghcr.io
-      API_IMAGE_NAME: ${{ github.repository_owner }}/whatsapp-sender
+      REGISTRY: ${{ needs.fetch-secrets.outputs.NEXUS_REGISTRY }}
+      API_IMAGE_NAME: whatsapp-sender
       TELEGRAM_BOT_TOKEN: ${{ needs.fetch-secrets.outputs.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ needs.fetch-secrets.outputs.TELEGRAM_CHAT_ID }}
 
@@ -97,12 +106,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to Nexus Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ needs.fetch-secrets.outputs.NEXUS_USERNAME }}
+          password: ${{ needs.fetch-secrets.outputs.NEXUS_PASSWORD }}
 
       - name: Build and push API Docker image
         uses: docker/build-push-action@v5
